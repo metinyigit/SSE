@@ -6,7 +6,15 @@ const port = process.env.PORT || 10000; // Glitch portu otomatik olarak ayarlar
 
 // Bağlı istemcileri tutmak için bir Set (benzersiz ve hızlı erişim)
 const clients = new Set();
-
+// server.js içinde istediğin bir yere ekleyebilirsin
+setInterval(() => {
+  const memoryUsage = process.memoryUsage();
+  console.log(`[${new Date().toLocaleTimeString()}] Node.js Process Memory Usage:`);
+  console.log(`  RSS (Total Allocated): ${ (memoryUsage.rss / 1024 / 1024).toFixed(2) } MB`);
+  console.log(`  Heap Total (V8 Heap): ${ (memoryUsage.heapTotal / 1024 / 1024).toFixed(2) } MB`);
+  console.log(`  Heap Used (Used by V8): ${ (memoryUsage.heapUsed / 1024 / 1024).toFixed(2) } MB`);
+  console.log(`  External (C++ Objects): ${ (memoryUsage.external / 1024 / 1024).toFixed(2) } MB`);
+}, 10000); // Her 10 saniyede bir logla
 // Kök dizin için basit bir HTML sayfası sunar
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
