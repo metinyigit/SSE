@@ -2,7 +2,7 @@
 
 const express = require('express');
 const app = express();
-const port = process.env.PORT || 3000; // Glitch portu otomatik olarak ayarlar
+const port = process.env.PORT || 10000; // Glitch portu otomatik olarak ayarlar
 
 // Bağlı istemcileri tutmak için bir Set (benzersiz ve hızlı erişim)
 const clients = new Set();
