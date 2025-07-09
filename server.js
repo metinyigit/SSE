@@ -1,111 +1,77 @@
-// server.js
-
 const express = require('express');
+const cors = require('cors');
 const app = express();
-const port = process.env.PORT || 10000;
+const port = 3000;
+countGET=0
+countPOST=0
+app.use(cors()); // CORS'u aktif ediyoruz
 
-// JSON body parser'ı etkinleştir
-app.use(express.json());
-
-// Bağlı istemcileri tutmak için bir Set
-const clients = new Set();
-
-// Node.js Process Memory Usage'ı loglamak için
+let counter = 0; // Global sayaç
+let latestData = { message: "Hello from server", counter }; // En güncel veri burada
 setInterval(() => {
-  const memoryUsage = process.memoryUsage();
-  console.log(`[${new Date().toLocaleTimeString()}] Node.js Process Memory Usage:`);
-  console.log(`  RSS (Total Allocated): ${ (memoryUsage.rss / 1024 / 1024).toFixed(2) } MB`);
-  console.log(`  Heap Total (V8 Heap): ${ (memoryUsage.heapTotal / 1024 / 1024).toFixed(2) } MB`);
-  console.log(`  Heap Used (Used by V8): ${ (memoryUsage.heapUsed / 1024 / 1024).toFixed(2) } MB`);
-  console.log(`  External (C++ Objects): ${ (memoryUsage.external / 1024 / 1024).toFixed(2) } MB`);
-}, 10000);
+    const activeHandles = process._getActiveHandles();
 
-// Kök dizin için basit bir HTML sayfası sunar (GET isteği)
-app.get('/', (req, res) => {
-  const clientInfo = {
-    method: 'GET',
-    path: '/',
-    ip: req.ip || req.connection.remoteAddress, // İstemci IP adresi
-    timestamp: new Date().toLocaleTimeString()
-  };
-  console.log(`[${clientInfo.timestamp}] GET isteği alındı: ${clientInfo.path} - İstemci IP: ${clientInfo.ip}`);
-  
-  // Tüm bağlı SSE istemcilerine bu olayı bildir
-  sendEventToClients({ type: 'http_request', data: clientInfo }, 'message');
-
-  res.sendFile(__dirname + '/index.html');
-});
-
-// Kök dizine yapılan POST isteklerini işler
-app.post('/', (req, res) => {
-  const clientInfo = {
-    method: 'POST',
-    path: '/',
-    ip: req.ip || req.connection.remoteAddress, // İstemci IP adresi
-    body: req.body, // Python istemcisinden gelen veri
-    timestamp: new Date().toLocaleTimeString()
-  };
-  console.log(`[${clientInfo.timestamp}] POST isteği alındı: ${clientInfo.path} - İstemci IP: ${clientInfo.ip}`);
-  console.log('Alınan POST verisi:', clientInfo.body);
-
-  // Tüm bağlı SSE istemcilerine bu olayı bildir
-  sendEventToClients({ type: 'http_request', data: clientInfo }, 'message');
-  
-  res.status(200).json({ status: 'success', message: 'POST isteği alındı!', data: req.body });
-});
-
-// SSE endpoint'i
-app.get('/events', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); 
-
-  req.socket.setTimeout(0); 
-  req.socket.setNoDelay(true);
-  req.socket.setKeepAlive(true, 120000);
-
-  clients.add(res);
-  console.log(`[${new Date().toLocaleTimeString()}] Yeni SSE istemcisi bağlandı. Toplam istemci: ${clients.size}`);
-
-  req.on('close', () => {
-    clients.delete(res);
-    console.log(`[${new Date().toLocaleTimeString()}] SSE istemcisi bağlantısı kesildi. Toplam istemci: ${clients.size}`);
-  });
-
-  res.write('data: Welcome to SSE stream!\n\n');
-});
-
-// Periyodik olarak tüm bağlı istemcilere veri gönderen fonksiyon
-function sendEventToClients(data, eventType = 'message') {
-  clients.forEach(res => {
-    try {
-      if (eventType === 'message') {
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
-      } else if (eventType === 'heartbeat') {
-        res.write(':\n\n');
-      }
-    } catch (error) {
-      console.error(`İstemciye veri gönderirken hata: ${error.message}`);
-    }
-  });
-}
-
-// Her 5 saniyede bir örnek veri gönder
-setInterval(() => {
-  const data = {
-    type: 'server_update',
-    timestamp: new Date().toLocaleTimeString(),
-    message: `Sunucu güncellemesi! Aktif istemciler: ${clients.size}`
-  };
-  sendEventToClients(data, 'message');
+    console.log(`🧵 Aktif Handle Sayısı: ${activeHandles.length}`);
+    activeHandles.forEach((handle, i) => {
+        console.log(`🔍 [${i}] Handle Tipi: ${handle.constructor.name}`);
+    });
 }, 5000);
-
-// Her 3 saniyede bir heartbeat (boş yorum satırı) gönder
+let previous = Date.now();
 setInterval(() => {
-  sendEventToClients(null, 'heartbeat');
-}, 3000);
+  const now = Date.now();
+  const drift = now - previous;
+  previous = now;
+  console.log(`⏱ Drift: ${drift}ms`);
+}, 1000);
+// GET endpoint
+app.get('/payload', (req, res) => {
+  countGET++
+    console.log("get: "+countGET)
+    res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+// POST endpoint
+app.post('/payload', (req, res) => {
+  
+  countPOST++
+    console.log(countPOST)
+    res.json({ status: 'received', timestamp: Date.now() });
+});
+
+app.get('/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    counter++;
+    console.log('🔗 Yeni bağlantı açıldı, veri gönderimi başlıyor...'+counter);
+    
+    const intervalId = setInterval(() => {
+        if (res.writableEnded) {
+            
+            counter--;
+            console.log('❌ Client bağlantısı kapandı.'+counter);
+            clearInterval(intervalId);
+            return;
+        }
+ // Global sayacı artır
+        latestData = { message: "Hello from server", counter };
+
+        res.write(`data: ${JSON.stringify(latestData)}\n\n`);
+        //console.log('📤 Gönderilen veri:', latestData);
+    }, 1000);
+
+    req.on('close', () => {
+        clearInterval(intervalId);
+        counter--;
+        console.log('📴 Bağlantı client tarafından sonlandırıldı.'+counter);
+    });
+});
+app.get('/test', (req, res) => {
+    res.sendFile(__dirname + '/test.html');
+});
 
 app.listen(port, () => {
-  console.log(`[${new Date().toLocaleTimeString()}] SSE Sunucusu çalışıyor: http://localhost:${port}`);
+    console.log(`🚀 Sunucu çalışıyor: http://localhost:${port}`);
 });
