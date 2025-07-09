@@ -1,12 +1,17 @@
-// server.js (Glitch projenizdeki ana dosya)
+// server.js
 
 const express = require('express');
 const app = express();
-const port = process.env.PORT || 10000; // Glitch portu otomatik olarak ayarlar
+const port = process.env.PORT || 10000; // Render, PORT ortam değişkenini atayacak
+
+// JSON body parser'ı etkinleştir
+// Bu, POST istekleriyle gönderilen JSON verilerini req.body içinde ayrıştırmanı sağlar.
+app.use(express.json()); 
 
 // Bağlı istemcileri tutmak için bir Set (benzersiz ve hızlı erişim)
 const clients = new Set();
-// server.js içinde istediğin bir yere ekleyebilirsin
+
+// Node.js Process Memory Usage'ı loglamak için (Render panelinde görünür)
 setInterval(() => {
   const memoryUsage = process.memoryUsage();
   console.log(`[${new Date().toLocaleTimeString()}] Node.js Process Memory Usage:`);
@@ -15,9 +20,21 @@ setInterval(() => {
   console.log(`  Heap Used (Used by V8): ${ (memoryUsage.heapUsed / 1024 / 1024).toFixed(2) } MB`);
   console.log(`  External (C++ Objects): ${ (memoryUsage.external / 1024 / 1024).toFixed(2) } MB`);
 }, 10000); // Her 10 saniyede bir logla
-// Kök dizin için basit bir HTML sayfası sunar
+
+// Kök dizin için basit bir HTML sayfası sunar (GET isteği)
+// Aynı rota, POST isteklerini de işleyebilir
 app.get('/', (req, res) => {
+  console.log(`[${new Date().toLocaleTimeString()}] GET isteği alındı: /`);
   res.sendFile(__dirname + '/index.html');
+});
+
+// Kök dizine yapılan POST isteklerini işler
+app.post('/', (req, res) => {
+  console.log(`[${new Date().toLocaleTimeString()}] POST isteği alındı: /`);
+  console.log('Alınan POST verisi:', req.body); // Python istemcisinden gelen veriyi logla
+
+  // İstemciye basit bir başarı yanıtı gönder
+  res.status(200).json({ status: 'success', message: 'POST isteği alındı!', data: req.body });
 });
 
 // SSE endpoint'i
@@ -29,20 +46,18 @@ app.get('/events', (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no'); // Nginx/Proxy buffer'lamayı kapatmak için
 
   // Bağlantıyı hemen sonlandırmamasını sağlamak için.
-  // Tarayıcılar genellikle bağlantıyı açık tutmaya çalışır ancak
-  // bu, Node.js'in altında çalışan HTTP modülünün varsayılan davranışını değiştirebilir.
   req.socket.setTimeout(0); 
   req.socket.setNoDelay(true);
   req.socket.setKeepAlive(true, 120000); // Bağlantıyı 2 dakika canlı tut (opsiyonel)
 
   // Yeni istemciyi listeye ekle
   clients.add(res);
-  console.log(`[${new Date().toLocaleTimeString()}] New SSE client connected. Total clients: ${clients.size}`);
+  console.log(`[${new Date().toLocaleTimeString()}] Yeni SSE istemcisi bağlandı. Toplam istemci: ${clients.size}`);
 
   // Bağlantı kesildiğinde istemciyi listeden çıkar
   req.on('close', () => {
     clients.delete(res);
-    console.log(`[${new Date().toLocaleTimeString()}] SSE client disconnected. Total clients: ${clients.size}`);
+    console.log(`[${new Date().toLocaleTimeString()}] SSE istemcisi bağlantısı kesildi. Toplam istemci: ${clients.size}`);
   });
 
   // İlk bağlantıda bir hoş geldin mesajı gönderebiliriz
@@ -59,7 +74,7 @@ function sendEventToClients(data, eventType = 'message') {
         res.write(':\n\n'); // SSE yorum satırı, genellikle heartbeat için kullanılır
       }
     } catch (error) {
-      console.error(`Error sending data to client: ${error.message}`);
+      console.error(`İstemciye veri gönderirken hata: ${error.message}`);
       // Hata durumunda istemciyi listeden çıkarmayı düşünebilirsiniz
       // clients.delete(res);
     }
@@ -70,7 +85,7 @@ function sendEventToClients(data, eventType = 'message') {
 setInterval(() => {
   const data = {
     timestamp: new Date().toLocaleTimeString(),
-    message: `Server update! Active clients: ${clients.size}`
+    message: `Sunucu güncellemesi! Aktif istemciler: ${clients.size}`
   };
   sendEventToClients(data, 'message');
 }, 5000);
@@ -83,5 +98,5 @@ setInterval(() => {
 
 // Sunucuyu dinlemeye başla
 app.listen(port, () => {
-  console.log(`[${new Date().toLocaleTimeString()}] SSE Server listening at http://localhost:${port}`);
+  console.log(`[${new Date().toLocaleTimeString()}] SSE Sunucusu çalışıyor: http://localhost:${port}`);
 });
