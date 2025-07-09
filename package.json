@@ -1,0 +1,25 @@
+{
+  "name": "sse",
+  "version": "1.0.0",
+  "description": "SSE (Server-Sent Events)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.x"
+  },
+  "keywords": [
+    "node",
+    "express",
+    "sse",
+    "realtime",
+    "events"
+  ],
+  "author": "Metin Yiğit",
+  "license": "MIT"
+}
