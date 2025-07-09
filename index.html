@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glitch SSE Client</title>
+</head>
+<body>
+    <h1>Glitch SSE Client Example</h1>
+    <p>Open your browser's console to see the events.</p>
+    <div id="messages"></div>
+
+    <script>
+        const eventSource = new EventSource('/events');
+        const messagesDiv = document.getElementById('messages');
+
+        eventSource.onopen = () => {
+            console.log('SSE connection opened!');
+            messagesDiv.innerHTML += '<p><strong>SSE Connection Opened!</strong></p>';
+        };
+
+        eventSource.onmessage = (event) => {
+            console.log('Received message:', event.data);
+            try {
+                const data = JSON.parse(event.data);
+                messagesDiv.innerHTML += `<p><strong>Update:</strong> ${data.message} (${data.timestamp})</p>`;
+            } catch (e) {
+                messagesDiv.innerHTML += `<p><strong>Received Raw:</strong> ${event.data}</p>`;
+            }
+        };
+
+        eventSource.onerror = (event) => {
+            console.error('SSE Error:', event);
+            messagesDiv.innerHTML += `<p style="color: red;"><strong>SSE Error!</strong> See console for details.</p>`;
+            eventSource.close(); // Hata durumunda bağlantıyı kapatıp tarayıcının yeniden denemesini bekle
+        };
+
+        // Bu kısım, Glitch'in uyku moduna geçmesini bir nebze engeller.
+        // Amaç, tarayıcının hala aktif olduğunu göstermek.
+        setInterval(() => {
+            console.log('Client still active...');
+        }, 60000); // Her dakika bir log at
+    </script>
+</body>
+</html>
